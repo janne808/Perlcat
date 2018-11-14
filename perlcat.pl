@@ -31,7 +31,7 @@ sub usage(){
     print STDERR "Options:\n";
     print STDERR "  -l         open and listen TCP port\n";
     print STDERR "  -p [PORT]  TCP port\n";
-    exit 0;
+    exit 1;
 }
 
 # main
@@ -120,7 +120,7 @@ if($listen == 0 && $#ARGV+1>1){
 
     # close socket interface
     close($socket);
-    exit 1;
+    exit 0;
 }
 elsif($listen == 1){
     # listen on port
@@ -159,7 +159,7 @@ elsif($listen == 1){
 
     # close socket interface
     close($socket);
-    exit 1;
+    exit 0;
 }
 else{
     argerr("No IP and PORT defined!");
