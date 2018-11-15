@@ -29,8 +29,9 @@ sub argerr($){
 sub usage(){
     print STDERR "Usage: $0 [OPTIONS] [IP] PORT\n";
     print STDERR "Options:\n";
-    print STDERR "  -l         open and listen TCP port\n";
+    print STDERR "  -l         Open and listen TCP port\n";
     print STDERR "  -p [PORT]  TCP port\n";
+    print STDERR "  -v         Verbose\n";
     exit 1;
 }
 
