@@ -38,6 +38,7 @@ sub usage(){
 my $addr;
 my $port=9001;
 my $listen=0;
+my $verbose=0;
 
 # parse arguments...
 # print usage if no arguments
@@ -62,6 +63,9 @@ for(0..$#ARGV){
 	    }
 	    elsif($_ eq "p"){
 		$readport=1;
+	    }
+	    elsif($_ eq "v"){
+		$verbose=1;
 	    }
 	}
     }
@@ -105,16 +109,18 @@ if($listen == 0 && $#ARGV+1>1){
     # split the fork
     if ($writepid) {
 	# copy the socket to standard output
-	while(<$socket>){
-	    print $_;
+	my $buffer;
+	while($socket->read($buffer,1)){
+	    syswrite(STDOUT,$buffer,1);
 	}
 	# SIGTERM to writer
 	kill("TERM", $writepid);
     }
     else {
 	# copy standard input to the socket
-	while (<STDIN>){
-	    print $socket $_;
+	my $buffer;
+	while(sysread(STDIN, $buffer, 1)){
+	    $socket->write($buffer);
 	}
     }
 
@@ -124,7 +130,7 @@ if($listen == 0 && $#ARGV+1>1){
 }
 elsif($listen == 1){
     # listen on port
-    print STDERR "Listening on port ". $port ."...\n";
+    if($verbose){ print STDERR "Listening on port ". $port ."...\n"; }
 
     # create socket interface
     my $socket = new IO::Socket::INET (
@@ -138,22 +144,26 @@ elsif($listen == 1){
     # accept client connection
     my $client = $socket->accept();
 
+    if($verbose){ print STDERR "Connection from ". $client->peerhost() ."\n"; }
+    
     # fork writer
     die "Can't fork writer: $!" unless defined(my $writepid = fork());
 
     # split the fork
     if ($writepid) {
 	# copy the socket to standard output
-	while(<$client>){
-	    print $_;
+	my $buffer;
+	while($client->read($buffer,1)){
+	    syswrite(STDOUT,$buffer,1);
 	}
 	# SIGTERM to writer
 	kill("TERM", $writepid);
     }
     else {
 	# copy standard input to the socket
-	while (<STDIN>){
-	    print $client $_;
+	my $buffer;
+	while(sysread(STDIN, $buffer, 1)){
+	    $client->write($buffer);
 	}
     }
 
