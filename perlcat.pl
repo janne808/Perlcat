@@ -8,6 +8,7 @@ sub argerr($){
     print STDERR "ERROR: ".$_[0]."\n";
     usage();
 }
+
 sub usage(){
     print STDERR "Usage: $0 [OPTIONS] [DESTINATION IP] PORT\n";
     print STDERR "Options:\n";
@@ -64,83 +65,78 @@ for(0..$#ARGV){
     }
 }
 
-if($#ARGV+1>1){
-    my $socket;
-    my $connection;
+my $socket;
+my $connection;
 	
-    # mode of operation
-    if($listen == 0){
-	# search for an IPv4 number followed by a port number
-	if($ARGV[$#ARGV-1] =~ m/^\d+.\d+.\d+.\d+$/ && $ARGV[$#ARGV] =~ m/^\d+$/){
-	    $addr = $ARGV[$#ARGV-1];
-	    $port = $ARGV[$#ARGV];
-	}
-
-	if(!defined $addr) {argerr("IP and PORT syntax error!");}
-	if(!defined $port) {argerr("IP and PORT syntax error!");}
-
-	if($addr !~ m/^\d+.\d+.\d+.\d+$/ || $port !~ m/^\d+$/){
-	    argerr("IP and PORT syntax error!");
-	}
-
-	# create socket interface
-	$socket = new IO::Socket::INET(
-	    Proto => 'tcp',
-	    PeerAddr => $addr,
-	    PeerPort => $port,
-	    Reuse => 1,
-	    Timeout => 10);
-	
-	die "Could not create socket: $!\n" unless $socket;
-
-	$connection = $socket;
-    }
-    else {
-	# listen on port
-	if($verbose){ print STDERR "Listening on port ". $port ."...\n"; }
-
-	# create socket interface
-	$socket = new IO::Socket::INET (
-	    LocalPort => $port,
-	    Proto => 'tcp',
-	    Listen => 1,
-	    Reuse => 1,);
-	
-	die "Could not create socket: $!\n" unless $socket;
-
-	# accept client connection
-	my $client = $socket->accept();
-
-	if($verbose){ print STDERR "Connection from ". $client->peerhost() ."\n"; }
-
-	$connection = $client;
+# mode of operation
+if($listen == 0){
+    # search for an IPv4 number followed by a port number
+    if($ARGV[$#ARGV-1] =~ m/^\d+.\d+.\d+.\d+$/ && $ARGV[$#ARGV] =~ m/^\d+$/){
+	$addr = $ARGV[$#ARGV-1];
+	$port = $ARGV[$#ARGV];
     }
     
-    # fork writer
-    die "Can't fork writer: $!" unless defined(my $writepid = fork());
-
-    # split the fork
-    if ($writepid) {
-	# copy the socket to standard output
-	my $buffer;
-	while($connection->read($buffer,1)){
-	    syswrite(STDOUT,$buffer,1);
-	}
-	# SIGTERM to writer
-	kill("TERM", $writepid);
+    if(!defined $addr) {argerr("IP and PORT syntax error!");}
+    if(!defined $port) {argerr("IP and PORT syntax error!");}
+    
+    if($addr !~ m/^\d+.\d+.\d+.\d+$/ || $port !~ m/^\d+$/){
+	argerr("IP and PORT syntax error!");
     }
-    else {
-	# copy standard input to the socket
-	my $buffer;
-	while(sysread(STDIN, $buffer, 1)){
-	    $connection->write($buffer);
-	}
-    }
+    
+    # create socket interface
+    $socket = new IO::Socket::INET(
+	Proto => 'tcp',
+	PeerAddr => $addr,
+	PeerPort => $port,
+	Reuse => 1,
+	Timeout => 10);
+    
+    die "Could not create socket: $!\n" unless $socket;
+    
+    $connection = $socket;
+}
+else {
+    # listen on port
+    if($verbose){ print STDERR "Listening on port ". $port ."...\n"; }
+    
+    # create socket interface
+    $socket = new IO::Socket::INET (
+	LocalPort => $port,
+	Proto => 'tcp',
+	Listen => 1,
+	Reuse => 1,);
+    
+    die "Could not create socket: $!\n" unless $socket;
+    
+    # accept client connection
+    my $client = $socket->accept();
+    
+    if($verbose){ print STDERR "Connection from ". $client->peerhost() ."\n"; }
+    
+    $connection = $client;
+}
 
-    # close socket interface
-    close($socket);
-    exit 0;
+# fork writer
+die "Can't fork writer: $!" unless defined(my $writepid = fork());
+
+# split the fork
+if ($writepid) {
+    # copy the socket to standard output
+    my $buffer;
+    while($connection->read($buffer,1)){
+	syswrite(STDOUT,$buffer,1);
+    }
+    # SIGTERM to writer
+    kill("TERM", $writepid);
 }
-else{
-    argerr("No IP and PORT defined!");
+else {
+    # copy standard input to the socket
+    my $buffer;
+    while(sysread(STDIN, $buffer, 1)){
+	$connection->write($buffer);
+    }
 }
+
+# close socket interface
+close($socket);
+exit 0;
